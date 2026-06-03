@@ -16,10 +16,7 @@
         <h1>Mapas de ubicaciones</h1>
         <p class="subtitle">Guias visuales para llaves, salas secretas y puntos especiales por mapa.</p>
       </div>
-      <div class="hero-panel" aria-label="Resumen">
-        <span class="stat-number" id="mapCount">7</span>
-        <span class="stat-label">mapas cargados</span>
-      </div>
+      <button class="tiza-button" type="button" id="openTiza">Tiza</button>
     </header>
 
     <main>
@@ -37,6 +34,41 @@
       </section>
 
       <section class="map-grid" id="mapGrid" aria-label="Lista de mapas"></section>
+
+      <section class="team-roulette" aria-labelledby="rouletteTitle">
+        <div class="roulette-header">
+          <div>
+            <p class="eyebrow">Sala personalizada</p>
+            <h2 id="rouletteTitle">Ruleta de equipos</h2>
+            <p class="roulette-copy">Pega los nombres, elige cuantos equipos usaran y sortea la partida al azar.</p>
+          </div>
+          <div class="team-control">
+            <label for="teamCount">Equipos</label>
+            <input id="teamCount" type="number" min="1" max="7" value="7" />
+          </div>
+        </div>
+
+        <div class="roulette-layout">
+          <div class="players-panel">
+            <label for="playerNames">Jugadores</label>
+            <textarea id="playerNames" spellcheck="false">AMIL-LAF
+1de2
+Frantirador9
+Ranyet
+MrCntral
+dio1305
+Onixxx
+Tom-_-Draag
+TIZA_HP</textarea>
+            <div class="roulette-actions">
+              <button class="spin-button" type="button" id="spinTeams">Sortear equipos</button>
+              <button class="ghost-button" type="button" id="resetTeams">Restaurar nombres</button>
+            </div>
+          </div>
+
+          <div class="teams-board" id="teamsBoard" aria-live="polite"></div>
+        </div>
+      </section>
     </main>
 
     <dialog class="viewer" id="viewer">

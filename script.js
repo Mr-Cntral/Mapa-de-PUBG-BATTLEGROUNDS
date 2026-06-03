@@ -62,13 +62,28 @@ const openImage = document.querySelector("#openImage");
 const closeViewer = document.querySelector("#closeViewer");
 const previousMap = document.querySelector("#previousMap");
 const nextMap = document.querySelector("#nextMap");
-const mapCount = document.querySelector("#mapCount");
+const openTiza = document.querySelector("#openTiza");
+const playerNames = document.querySelector("#playerNames");
+const teamCount = document.querySelector("#teamCount");
+const spinTeams = document.querySelector("#spinTeams");
+const resetTeams = document.querySelector("#resetTeams");
+const teamsBoard = document.querySelector("#teamsBoard");
+
+const defaultPlayers = [
+  "AMIL-LAF",
+  "1de2",
+  "Frantirador9",
+  "Ranyet",
+  "MrCntral",
+  "dio1305",
+  "Onixxx",
+  "Tom-_-Draag",
+  "TIZA_HP"
+];
 
 let activeFilter = "all";
 let activeIndex = 0;
 let visibleMaps = [...maps];
-
-mapCount.textContent = String(maps.length);
 
 function renderCards() {
   const query = searchInput.value.trim().toLowerCase();
@@ -116,6 +131,7 @@ function openViewer(index) {
   activeIndex = index;
   const map = visibleMaps[activeIndex];
 
+  viewer.classList.remove("is-art");
   viewerTitle.textContent = map.name;
   viewerType.textContent = map.type;
   viewerDescription.textContent = map.description;
@@ -128,10 +144,114 @@ function openViewer(index) {
   }
 }
 
+function openTizaViewer() {
+  viewer.classList.add("is-art");
+  viewerTitle.textContent = "Tiza";
+  viewerType.textContent = "Imagen principal";
+  viewerDescription.textContent = "Imagen de fondo y portada del sitio.";
+  viewerImage.src = "Tiza.png";
+  viewerImage.alt = "Imagen principal Tiza";
+  openImage.href = "Tiza.png";
+
+  if (!viewer.open) {
+    viewer.showModal();
+  }
+}
+
 function moveViewer(direction) {
   if (!visibleMaps.length) return;
   activeIndex = (activeIndex + direction + visibleMaps.length) % visibleMaps.length;
   openViewer(activeIndex);
+}
+
+function getPlayers() {
+  return playerNames.value
+    .split(/\r?\n|,/)
+    .map((name) => name.trim())
+    .filter(Boolean);
+}
+
+function shufflePlayers(players) {
+  const shuffled = [...players];
+
+  for (let index = shuffled.length - 1; index > 0; index -= 1) {
+    const randomIndex = Math.floor(Math.random() * (index + 1));
+    [shuffled[index], shuffled[randomIndex]] = [shuffled[randomIndex], shuffled[index]];
+  }
+
+  return shuffled;
+}
+
+function clampTeamCount(value) {
+  const number = Number.parseInt(value, 10);
+  if (Number.isNaN(number)) return 7;
+  return Math.min(Math.max(number, 1), 7);
+}
+
+function buildTeams(players, count) {
+  const teams = Array.from({ length: count }, () => []);
+
+  shufflePlayers(players).forEach((player, index) => {
+    teams[index % count].push(player);
+  });
+
+  return teams;
+}
+
+function renderTeams(teams, highlightIndex = -1) {
+  teamsBoard.innerHTML = "";
+
+  teams.forEach((players, index) => {
+    const card = document.createElement("article");
+    card.className = `team-card${index === highlightIndex ? " is-highlighted" : ""}`;
+    const slots = Math.max(players.length, 2);
+    const items = Array.from({ length: slots }, (_, slotIndex) => {
+      const player = players[slotIndex];
+      return `<li class="${player ? "" : "empty-slot"}">${player || "Libre"}</li>`;
+    }).join("");
+
+    card.innerHTML = `
+      <div class="team-title">
+        <span class="team-number">${index + 1}</span>
+        <span class="team-name">Team #${index + 1}</span>
+      </div>
+      <ul class="team-list">${items}</ul>
+    `;
+    teamsBoard.append(card);
+  });
+}
+
+function spinTeamRoulette() {
+  const players = getPlayers();
+  const count = clampTeamCount(teamCount.value);
+  teamCount.value = String(count);
+
+  if (!players.length) {
+    renderTeams(Array.from({ length: count }, () => []));
+    return;
+  }
+
+  const teams = buildTeams(players, count);
+  let step = 0;
+  const maxSteps = count * 3 + 7;
+  spinTeams.disabled = true;
+
+  const interval = window.setInterval(() => {
+    renderTeams(teams, step % count);
+    step += 1;
+
+    if (step > maxSteps) {
+      window.clearInterval(interval);
+      renderTeams(teams);
+      spinTeams.disabled = false;
+    }
+  }, 90);
+}
+
+function resetDefaultTeams() {
+  playerNames.value = defaultPlayers.join("\n");
+  teamCount.value = "7";
+  renderTeams(buildTeams(defaultPlayers, 7));
 }
 
 grid.addEventListener("click", (event) => {
@@ -150,6 +270,17 @@ filterButtons.forEach((button) => {
 });
 
 searchInput.addEventListener("input", renderCards);
+openTiza.addEventListener("click", openTizaViewer);
+spinTeams.addEventListener("click", spinTeamRoulette);
+resetTeams.addEventListener("click", resetDefaultTeams);
+teamCount.addEventListener("change", () => {
+  const count = clampTeamCount(teamCount.value);
+  teamCount.value = String(count);
+  renderTeams(buildTeams(getPlayers(), count));
+});
+playerNames.addEventListener("input", () => {
+  renderTeams(buildTeams(getPlayers(), clampTeamCount(teamCount.value)));
+});
 closeViewer.addEventListener("click", () => viewer.close());
 previousMap.addEventListener("click", () => moveViewer(-1));
 nextMap.addEventListener("click", () => moveViewer(1));
@@ -167,3 +298,4 @@ window.addEventListener("keydown", (event) => {
 });
 
 renderCards();
+renderTeams(buildTeams(defaultPlayers, 7));
