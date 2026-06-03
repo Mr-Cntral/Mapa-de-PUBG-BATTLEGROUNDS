@@ -13,7 +13,7 @@
     <header class="site-header">
       <div class="brand">
         <p class="eyebrow">PUBG BATTLEGROUNDS</p>
-        <h1>Mapas de ubicaciones</h1>
+        <h1>Mapas y ruleta PUBG</h1>
         <p class="subtitle">Guias visuales para llaves, salas secretas y puntos especiales por mapa.</p>
       </div>
       <button class="tiza-button" type="button" id="openTiza">Tiza</button>
@@ -40,18 +40,18 @@
           <div>
             <p class="eyebrow">Sala personalizada</p>
             <h2 id="rouletteTitle">Ruleta de equipos</h2>
-            <p class="roulette-copy">Pega los nombres, elige cuantos equipos usaran y sortea la partida al azar.</p>
+            <p class="roulette-copy">Mezcla a todos los jugadores, gira la ruleta y reparte los equipos al azar.</p>
           </div>
           <div class="team-control">
-            <label for="teamCount">Equipos</label>
-            <input id="teamCount" type="number" min="1" max="7" value="7" />
+            <label for="teamsCountTop">Equipos</label>
+            <input id="teamsCountTop" type="number" min="2" max="7" value="7" />
           </div>
         </div>
 
-        <div class="roulette-layout">
-          <div class="players-panel">
-            <label for="playerNames">Jugadores</label>
-            <textarea id="playerNames" spellcheck="false">AMIL-LAF
+        <div class="roulette-app">
+          <aside class="roulette-settings">
+            <label for="namesArea">Jugadores</label>
+            <textarea id="namesArea" spellcheck="false">AMIL-LAF
 1de2
 Frantirador9
 Ranyet
@@ -60,13 +60,55 @@ dio1305
 Onixxx
 Tom-_-Draag
 TIZA_HP</textarea>
-            <div class="roulette-actions">
-              <button class="spin-button" type="button" id="spinTeams">Sortear equipos</button>
-              <button class="ghost-button" type="button" id="resetTeams">Restaurar nombres</button>
-            </div>
-          </div>
 
-          <div class="teams-board" id="teamsBoard" aria-live="polite"></div>
+            <div class="roulette-fields">
+              <label>
+                <span>Cantidad</span>
+                <input id="teamsCount" type="number" min="2" max="7" value="7" />
+              </label>
+              <label>
+                <span>Modo</span>
+                <select id="modeSelect">
+                  <option value="balanced">Equilibrado</option>
+                  <option value="random">Mas aleatorio</option>
+                </select>
+              </label>
+            </div>
+
+            <div class="roulette-actions">
+              <button class="spin-button" type="button" id="spinShuffleBtn">Girar y mezclar</button>
+              <button class="ghost-button" type="button" id="previewBtn">Vista rapida</button>
+              <button class="ghost-button" type="button" id="restoreBtn">Restaurar nombres</button>
+              <button class="ghost-button" type="button" id="clearBtn">Limpiar equipos</button>
+            </div>
+
+            <div class="roulette-stats">
+              <div><strong id="playersStat">0</strong><span>Jugadores</span></div>
+              <div><strong id="teamsStat">0</strong><span>Equipos</span></div>
+              <div><strong id="slotsStat">0</strong><span>Espacios</span></div>
+            </div>
+          </aside>
+
+          <div class="roulette-stage">
+            <section class="wheel-panel">
+              <div class="wheel-wrap">
+                <div class="pointer" aria-hidden="true"></div>
+                <canvas id="wheelCanvas" width="900" height="900"></canvas>
+                <button id="spinBtnCenter" class="spin-center" type="button">Girar</button>
+              </div>
+
+              <div class="roulette-info">
+                <p class="viewer-kicker">Resultado del sorteo</p>
+                <div class="result-card">
+                  <h3 id="resultTitle">Listo para mezclar</h3>
+                  <p id="resultText">Presiona Girar y los nombres se moveran entre equipos hasta quedar sorteados.</p>
+                </div>
+                <div id="shuffleLight" class="shuffle-light">Mezclando nombres entre todos los equipos...</div>
+              </div>
+            </section>
+
+            <section id="teamsGrid" class="roulette-teams" aria-live="polite"></section>
+          </div>
         </div>
       </section>
     </main>

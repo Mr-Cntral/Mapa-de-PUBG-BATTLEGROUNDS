@@ -63,23 +63,6 @@ const closeViewer = document.querySelector("#closeViewer");
 const previousMap = document.querySelector("#previousMap");
 const nextMap = document.querySelector("#nextMap");
 const openTiza = document.querySelector("#openTiza");
-const playerNames = document.querySelector("#playerNames");
-const teamCount = document.querySelector("#teamCount");
-const spinTeams = document.querySelector("#spinTeams");
-const resetTeams = document.querySelector("#resetTeams");
-const teamsBoard = document.querySelector("#teamsBoard");
-
-const defaultPlayers = [
-  "AMIL-LAF",
-  "1de2",
-  "Frantirador9",
-  "Ranyet",
-  "MrCntral",
-  "dio1305",
-  "Onixxx",
-  "Tom-_-Draag",
-  "TIZA_HP"
-];
 
 let activeFilter = "all";
 let activeIndex = 0;
@@ -164,96 +147,6 @@ function moveViewer(direction) {
   openViewer(activeIndex);
 }
 
-function getPlayers() {
-  return playerNames.value
-    .split(/\r?\n|,/)
-    .map((name) => name.trim())
-    .filter(Boolean);
-}
-
-function shufflePlayers(players) {
-  const shuffled = [...players];
-
-  for (let index = shuffled.length - 1; index > 0; index -= 1) {
-    const randomIndex = Math.floor(Math.random() * (index + 1));
-    [shuffled[index], shuffled[randomIndex]] = [shuffled[randomIndex], shuffled[index]];
-  }
-
-  return shuffled;
-}
-
-function clampTeamCount(value) {
-  const number = Number.parseInt(value, 10);
-  if (Number.isNaN(number)) return 7;
-  return Math.min(Math.max(number, 1), 7);
-}
-
-function buildTeams(players, count) {
-  const teams = Array.from({ length: count }, () => []);
-
-  shufflePlayers(players).forEach((player, index) => {
-    teams[index % count].push(player);
-  });
-
-  return teams;
-}
-
-function renderTeams(teams, highlightIndex = -1) {
-  teamsBoard.innerHTML = "";
-
-  teams.forEach((players, index) => {
-    const card = document.createElement("article");
-    card.className = `team-card${index === highlightIndex ? " is-highlighted" : ""}`;
-    const slots = Math.max(players.length, 2);
-    const items = Array.from({ length: slots }, (_, slotIndex) => {
-      const player = players[slotIndex];
-      return `<li class="${player ? "" : "empty-slot"}">${player || "Libre"}</li>`;
-    }).join("");
-
-    card.innerHTML = `
-      <div class="team-title">
-        <span class="team-number">${index + 1}</span>
-        <span class="team-name">Team #${index + 1}</span>
-      </div>
-      <ul class="team-list">${items}</ul>
-    `;
-    teamsBoard.append(card);
-  });
-}
-
-function spinTeamRoulette() {
-  const players = getPlayers();
-  const count = clampTeamCount(teamCount.value);
-  teamCount.value = String(count);
-
-  if (!players.length) {
-    renderTeams(Array.from({ length: count }, () => []));
-    return;
-  }
-
-  const teams = buildTeams(players, count);
-  let step = 0;
-  const maxSteps = count * 3 + 7;
-  spinTeams.disabled = true;
-
-  const interval = window.setInterval(() => {
-    renderTeams(teams, step % count);
-    step += 1;
-
-    if (step > maxSteps) {
-      window.clearInterval(interval);
-      renderTeams(teams);
-      spinTeams.disabled = false;
-    }
-  }, 90);
-}
-
-function resetDefaultTeams() {
-  playerNames.value = defaultPlayers.join("\n");
-  teamCount.value = "7";
-  renderTeams(buildTeams(defaultPlayers, 7));
-}
-
 grid.addEventListener("click", (event) => {
   const button = event.target.closest("[data-index]");
   if (!button) return;
@@ -271,16 +164,6 @@ filterButtons.forEach((button) => {
 
 searchInput.addEventListener("input", renderCards);
 openTiza.addEventListener("click", openTizaViewer);
-spinTeams.addEventListener("click", spinTeamRoulette);
-resetTeams.addEventListener("click", resetDefaultTeams);
-teamCount.addEventListener("change", () => {
-  const count = clampTeamCount(teamCount.value);
-  teamCount.value = String(count);
-  renderTeams(buildTeams(getPlayers(), count));
-});
-playerNames.addEventListener("input", () => {
-  renderTeams(buildTeams(getPlayers(), clampTeamCount(teamCount.value)));
-});
 closeViewer.addEventListener("click", () => viewer.close());
 previousMap.addEventListener("click", () => moveViewer(-1));
 nextMap.addEventListener("click", () => moveViewer(1));
@@ -297,5 +180,455 @@ window.addEventListener("keydown", (event) => {
   if (event.key === "ArrowRight") moveViewer(1);
 });
 
+const namesArea = document.querySelector("#namesArea");
+const teamsCount = document.querySelector("#teamsCount");
+const teamsCountTop = document.querySelector("#teamsCountTop");
+const modeSelect = document.querySelector("#modeSelect");
+const spinShuffleBtn = document.querySelector("#spinShuffleBtn");
+const spinBtnCenter = document.querySelector("#spinBtnCenter");
+const previewBtn = document.querySelector("#previewBtn");
+const restoreBtn = document.querySelector("#restoreBtn");
+const clearBtn = document.querySelector("#clearBtn");
+const playersStat = document.querySelector("#playersStat");
+const teamsStat = document.querySelector("#teamsStat");
+const slotsStat = document.querySelector("#slotsStat");
+const resultTitle = document.querySelector("#resultTitle");
+const resultText = document.querySelector("#resultText");
+const shuffleLight = document.querySelector("#shuffleLight");
+const teamsGrid = document.querySelector("#teamsGrid");
+const canvas = document.querySelector("#wheelCanvas");
+const ctx = canvas.getContext("2d");
+const defaultNames = namesArea.value.trim();
+
+const palette = [
+  "#d9a93f",
+  "#5ec0ff",
+  "#ff6d6d",
+  "#9e7cff",
+  "#62d88c",
+  "#ffa64d",
+  "#f75cd0"
+];
+
+let teams = [];
+let rotation = 0;
+let spinning = false;
+let shuffleTimer = null;
+
+function getNames() {
+  return namesArea.value
+    .split(/\r?\n|,/)
+    .map((name) => name.trim())
+    .filter(Boolean);
+}
+
+function getTeamCount() {
+  const count = Math.max(2, Math.min(7, Number.parseInt(teamsCount.value, 10) || 7));
+  teamsCount.value = String(count);
+  teamsCountTop.value = String(count);
+  return count;
+}
+
+function syncTeamInputs(value) {
+  teamsCount.value = value;
+  teamsCountTop.value = value;
+  createEmptyTeams();
+  drawWheel();
+}
+
+function shuffle(items) {
+  const array = [...items];
+
+  for (let index = array.length - 1; index > 0; index -= 1) {
+    const randomIndex = Math.floor(Math.random() * (index + 1));
+    [array[index], array[randomIndex]] = [array[randomIndex], array[index]];
+  }
+
+  return array;
+}
+
+function createEmptyTeams() {
+  const count = getTeamCount();
+  teams = Array.from({ length: count }, (_, index) => ({
+    id: index,
+    number: index + 1,
+    name: `Team #${index + 1}`,
+    color: palette[index % palette.length],
+    members: []
+  }));
+  renderTeams(false);
+  updateStats();
+}
+
+function makeDistribution() {
+  const names = shuffle(getNames());
+  const count = getTeamCount();
+
+  const generated = Array.from({ length: count }, (_, index) => ({
+    id: index,
+    number: index + 1,
+    name: `Team #${index + 1}`,
+    color: palette[index % palette.length],
+    members: []
+  }));
+
+  if (modeSelect.value === "balanced") {
+    names.forEach((name, index) => {
+      generated[index % count].members.push(name);
+    });
+  } else {
+    names.forEach((name) => {
+      generated[Math.floor(Math.random() * count)].members.push(name);
+    });
+  }
+
+  return generated;
+}
+
+function renderTeams(isShuffling) {
+  teamsGrid.innerHTML = "";
+
+  const maxRows = Math.max(
+    2,
+    ...teams.map((team) => team.members.length),
+    Math.ceil(getNames().length / Math.max(1, getTeamCount()))
+  );
+
+  teams.forEach((team) => {
+    const card = document.createElement("article");
+    card.className = `roulette-team-card${isShuffling ? " shuffling" : ""}`;
+
+    const rows = Array.from({ length: maxRows }, (_, index) => {
+      const player = team.members[index];
+      return `<div class="roulette-player-row${isShuffling ? " flip" : ""}${player ? "" : " empty"}">${player || "Libre"}</div>`;
+    }).join("");
+
+    card.innerHTML = `
+      <div class="roulette-team-head">
+        <div class="roulette-team-number" style="background:${shade(team.color, -28)}">${team.number}</div>
+        <div class="roulette-team-title" style="background:${lighten(team.color, 68)}">${team.name}</div>
+      </div>
+      <div>${rows}</div>
+    `;
+    teamsGrid.append(card);
+  });
+}
+
+function updateStats() {
+  const playerCount = getNames().length;
+  const teamCount = getTeamCount();
+  playersStat.textContent = String(playerCount);
+  teamsStat.textContent = String(teamCount);
+  slotsStat.textContent = String(Math.max(playerCount, teamCount * 2));
+}
+
+function previewShuffle() {
+  if (spinning) return;
+  teams = makeDistribution();
+  renderTeams(false);
+  updateStats();
+  drawWheel();
+  resultTitle.textContent = "Vista rapida generada";
+  resultText.textContent = "Los nombres ya fueron mezclados. Presiona Girar para verlo con animacion.";
+}
+
+function spinAndShuffle() {
+  if (spinning) return;
+
+  if (!getNames().length) {
+    resultTitle.textContent = "No hay jugadores";
+    resultText.textContent = "Agrega nombres en la lista para poder sortear.";
+    return;
+  }
+
+  spinning = true;
+  setButtons(false);
+  shuffleLight.classList.add("show");
+  resultTitle.textContent = "Mezclando...";
+  resultText.textContent = "Los nombres estan cambiando entre todos los equipos.";
+
+  const finalTeams = makeDistribution();
+
+  window.clearInterval(shuffleTimer);
+  shuffleTimer = window.setInterval(() => {
+    teams = makeDistribution();
+    renderTeams(true);
+  }, 115);
+
+  spinWheelAnimation(() => {
+    window.clearInterval(shuffleTimer);
+    shuffleTimer = null;
+
+    teams = finalTeams;
+    renderTeams(false);
+    drawWheel();
+
+    resultTitle.textContent = "Equipos sorteados";
+    resultText.textContent = makeSummary(teams);
+
+    shuffleLight.classList.remove("show");
+    spinning = false;
+    setButtons(true);
+    updateStats();
+  });
+}
+
+function makeSummary(list) {
+  return list
+    .map((team) => `${team.name}: ${team.members.length ? team.members.join(", ") : "Libre"}`)
+    .join(" | ");
+}
+
+function setButtons(enabled) {
+  spinShuffleBtn.disabled = !enabled;
+  spinBtnCenter.disabled = !enabled;
+  previewBtn.disabled = !enabled;
+  restoreBtn.disabled = !enabled;
+  clearBtn.disabled = !enabled;
+  teamsCount.disabled = !enabled;
+  teamsCountTop.disabled = !enabled;
+  modeSelect.disabled = !enabled;
+}
+
+function spinWheelAnimation(done) {
+  const start = rotation;
+  const extraTurns = Math.PI * 2 * (6 + Math.floor(Math.random() * 3));
+  const randomStop = Math.random() * Math.PI * 2;
+  const end = start + extraTurns + randomStop;
+  const duration = 4200;
+  const startTime = performance.now();
+
+  function animate(now) {
+    const progress = Math.min(1, (now - startTime) / duration);
+    const eased = 1 - Math.pow(1 - progress, 4);
+    rotation = start + (end - start) * eased;
+    drawWheel();
+
+    if (progress < 1) {
+      window.requestAnimationFrame(animate);
+    } else {
+      rotation = normalize(end);
+      drawWheel();
+      done();
+    }
+  }
+
+  window.requestAnimationFrame(animate);
+}
+
+function drawWheel() {
+  const count = getTeamCount();
+  const width = canvas.width;
+  const height = canvas.height;
+  const centerX = width / 2;
+  const centerY = height / 2;
+  const outerRadius = width * 0.43;
+  const innerRadius = width * 0.16;
+  const rimRadius = width * 0.47;
+  const slice = (Math.PI * 2) / count;
+
+  ctx.clearRect(0, 0, width, height);
+
+  const aura = ctx.createRadialGradient(centerX, centerY, innerRadius, centerX, centerY, rimRadius + 45);
+  aura.addColorStop(0, "rgba(255,255,255,.12)");
+  aura.addColorStop(0.62, "rgba(216,173,76,.08)");
+  aura.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.fillStyle = aura;
+  ctx.beginPath();
+  ctx.arc(centerX, centerY, rimRadius + 55, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.save();
+  ctx.translate(centerX, centerY);
+  ctx.rotate(rotation);
+  ctx.translate(-centerX, -centerY);
+
+  for (let index = 0; index < count; index += 1) {
+    const color = palette[index % palette.length];
+    const start = -Math.PI / 2 + index * slice;
+    const end = start + slice;
+
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, outerRadius, start + 0.01, end - 0.01);
+    ctx.arc(centerX, centerY, innerRadius, end - 0.01, start + 0.01, true);
+    ctx.closePath();
+
+    const gradient = ctx.createRadialGradient(centerX - 110, centerY - 130, innerRadius, centerX, centerY, outerRadius);
+    gradient.addColorStop(0, lighten(color, 30));
+    gradient.addColorStop(0.55, color);
+    gradient.addColorStop(1, shade(color, -22));
+    ctx.fillStyle = gradient;
+    ctx.fill();
+
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = "rgba(255,255,255,.14)";
+    ctx.stroke();
+
+    const middle = start + slice / 2;
+    const textX = centerX + Math.cos(middle) * (innerRadius + (outerRadius - innerRadius) * 0.56);
+    const textY = centerY + Math.sin(middle) * (innerRadius + (outerRadius - innerRadius) * 0.56);
+
+    ctx.save();
+    ctx.translate(textX, textY);
+    ctx.rotate(middle);
+    if (Math.cos(middle) < 0) ctx.rotate(Math.PI);
+
+    const title = `Team #${index + 1}`;
+    const maxWidth = (outerRadius - innerRadius) * 0.72;
+    const titleSize = fitText(title, maxWidth, count <= 4 ? 40 : 28, 16);
+
+    ctx.font = `900 ${titleSize}px Inter, Segoe UI, Arial`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.lineWidth = Math.max(4, titleSize * 0.13);
+    ctx.strokeStyle = "rgba(0,0,0,.58)";
+    ctx.strokeText(title, 0, 0);
+    ctx.fillStyle = "#fff";
+    ctx.fillText(title, 0, 0);
+
+    ctx.restore();
+  }
+
+  ctx.restore();
+
+  drawRim(centerX, centerY, rimRadius, outerRadius);
+  drawCenter(centerX, centerY, innerRadius);
+}
+
+function drawRim(centerX, centerY, rimRadius, outerRadius) {
+  const ring = ctx.createRadialGradient(centerX - 80, centerY - 90, outerRadius, centerX, centerY, rimRadius + 15);
+  ring.addColorStop(0, "#f3dca0");
+  ring.addColorStop(0.3, "#d3a24a");
+  ring.addColorStop(0.58, "#78582a");
+  ring.addColorStop(0.82, "#1b1f27");
+  ring.addColorStop(1, "#f7c35c");
+
+  ctx.beginPath();
+  ctx.arc(centerX, centerY, rimRadius, 0, Math.PI * 2);
+  ctx.lineWidth = 28;
+  ctx.strokeStyle = ring;
+  ctx.stroke();
+
+  for (let index = 0; index < 14; index += 1) {
+    const angle = -Math.PI / 2 + (index * Math.PI * 2) / 14;
+    const x = centerX + Math.cos(angle) * rimRadius;
+    const y = centerY + Math.sin(angle) * rimRadius;
+    const color = palette[index % palette.length];
+
+    ctx.shadowColor = color;
+    ctx.shadowBlur = 20;
+    ctx.fillStyle = lighten(color, 35);
+    ctx.beginPath();
+    ctx.arc(x, y, 13, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = "rgba(255,255,255,.7)";
+    ctx.lineWidth = 3;
+    ctx.stroke();
+
+    ctx.fillStyle = "rgba(255,255,255,.7)";
+    ctx.beginPath();
+    ctx.arc(x - 4, y - 4, 4, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+function drawCenter(centerX, centerY, innerRadius) {
+  ctx.beginPath();
+  ctx.arc(centerX, centerY, innerRadius + 18, 0, Math.PI * 2);
+  ctx.fillStyle = "#d1a247";
+  ctx.shadowColor = "rgba(0,0,0,.35)";
+  ctx.shadowBlur = 18;
+  ctx.fill();
+
+  ctx.shadowBlur = 0;
+  const metal = ctx.createRadialGradient(centerX - 55, centerY - 65, 12, centerX, centerY, innerRadius + 8);
+  metal.addColorStop(0, "#fff");
+  metal.addColorStop(0.3, "#e7edf4");
+  metal.addColorStop(0.6, "#9ea9b8");
+  metal.addColorStop(1, "#5b6673");
+
+  ctx.beginPath();
+  ctx.arc(centerX, centerY, innerRadius + 3, 0, Math.PI * 2);
+  ctx.fillStyle = metal;
+  ctx.fill();
+}
+
+function normalize(angle) {
+  const two = Math.PI * 2;
+  return ((angle % two) + two) % two;
+}
+
+function fitText(text, maxWidth, start, minimum) {
+  let size = start;
+  ctx.font = `900 ${size}px Inter, Segoe UI, Arial`;
+
+  while (ctx.measureText(text).width > maxWidth && size > minimum) {
+    size -= 1;
+    ctx.font = `900 ${size}px Inter, Segoe UI, Arial`;
+  }
+
+  return size;
+}
+
+function hexToRgb(hex) {
+  const value = hex.replace("#", "");
+  return {
+    r: Number.parseInt(value.slice(0, 2), 16),
+    g: Number.parseInt(value.slice(2, 4), 16),
+    b: Number.parseInt(value.slice(4, 6), 16)
+  };
+}
+
+function rgbToHex(red, green, blue) {
+  return `#${[red, green, blue]
+    .map((value) => Math.max(0, Math.min(255, Math.round(value))).toString(16).padStart(2, "0"))
+    .join("")}`;
+}
+
+function lighten(hex, percent) {
+  const { r, g, b } = hexToRgb(hex);
+  return rgbToHex(r + ((255 - r) * percent) / 100, g + ((255 - g) * percent) / 100, b + ((255 - b) * percent) / 100);
+}
+
+function shade(hex, percent) {
+  const { r, g, b } = hexToRgb(hex);
+  return rgbToHex(r * (1 + percent / 100), g * (1 + percent / 100), b * (1 + percent / 100));
+}
+
+function restoreNames() {
+  namesArea.value = defaultNames;
+  teamsCount.value = "7";
+  teamsCountTop.value = "7";
+  modeSelect.value = "balanced";
+  createEmptyTeams();
+  drawWheel();
+  resultTitle.textContent = "Listo para mezclar";
+  resultText.textContent = "Presiona Girar y los nombres se moveran entre equipos al mismo tiempo.";
+}
+
+function clearTeams() {
+  window.clearInterval(shuffleTimer);
+  shuffleTimer = null;
+  createEmptyTeams();
+  resultTitle.textContent = "Equipos limpiados";
+  resultText.textContent = "Los nombres siguen en la lista. Presiona Girar para sortearlos nuevamente.";
+  shuffleLight.classList.remove("show");
+}
+
+teamsCount.addEventListener("input", () => syncTeamInputs(teamsCount.value));
+teamsCountTop.addEventListener("input", () => syncTeamInputs(teamsCountTop.value));
+spinShuffleBtn.addEventListener("click", spinAndShuffle);
+spinBtnCenter.addEventListener("click", spinAndShuffle);
+previewBtn.addEventListener("click", previewShuffle);
+restoreBtn.addEventListener("click", restoreNames);
+clearBtn.addEventListener("click", clearTeams);
+namesArea.addEventListener("input", updateStats);
+modeSelect.addEventListener("change", updateStats);
+window.addEventListener("resize", drawWheel);
+
 renderCards();
-renderTeams(buildTeams(defaultPlayers, 7));
+createEmptyTeams();
+drawWheel();
+updateStats();
