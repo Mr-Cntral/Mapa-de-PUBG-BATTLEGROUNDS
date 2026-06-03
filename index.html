@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="Mapas de PUBG BATTLEGROUNDS con ubicaciones de salas, llaves y puntos especiales." />
+    <title>Mapas PUBG BATTLEGROUNDS</title>
+    <link rel="preload" href="Tiza.png" as="image" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="page-bg" aria-hidden="true"></div>
+    <header class="site-header">
+      <div class="brand">
+        <p class="eyebrow">PUBG BATTLEGROUNDS</p>
+        <h1>Mapas de ubicaciones</h1>
+        <p class="subtitle">Guias visuales para llaves, salas secretas y puntos especiales por mapa.</p>
+      </div>
+      <div class="hero-panel" aria-label="Resumen">
+        <span class="stat-number" id="mapCount">7</span>
+        <span class="stat-label">mapas cargados</span>
+      </div>
+    </header>
+
+    <main>
+      <section class="toolbar" aria-label="Controles de mapas">
+        <label class="search-wrap" for="searchInput">
+          <span>Buscar</span>
+          <input id="searchInput" type="search" placeholder="Nombre o tipo de ubicacion" autocomplete="off" />
+        </label>
+        <div class="filter-group" aria-label="Filtrar mapas">
+          <button class="filter-btn is-active" type="button" data-filter="all">Todos</button>
+          <button class="filter-btn" type="button" data-filter="secret">Secret rooms</button>
+          <button class="filter-btn" type="button" data-filter="keys">Llaves</button>
+          <button class="filter-btn" type="button" data-filter="special">Especiales</button>
+        </div>
+      </section>
+
+      <section class="map-grid" id="mapGrid" aria-label="Lista de mapas"></section>
+    </main>
+
+    <dialog class="viewer" id="viewer">
+      <div class="viewer-top">
+        <div>
+          <p class="viewer-kicker" id="viewerType"></p>
+          <h2 id="viewerTitle"></h2>
+        </div>
+        <button class="icon-btn" type="button" id="closeViewer" aria-label="Cerrar visor">Cerrar</button>
+      </div>
+      <div class="viewer-frame">
+        <button class="nav-btn previous" type="button" id="previousMap" aria-label="Mapa anterior">Anterior</button>
+        <img id="viewerImage" alt="" />
+        <button class="nav-btn next" type="button" id="nextMap" aria-label="Mapa siguiente">Siguiente</button>
+      </div>
+      <div class="viewer-bottom">
+        <p id="viewerDescription"></p>
+        <a id="openImage" href="#" target="_blank" rel="noopener">Abrir imagen completa</a>
+      </div>
+    </dialog>
+
+    <script src="script.js"></script>
+  </body>
+</html>
