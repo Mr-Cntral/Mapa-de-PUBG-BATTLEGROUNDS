@@ -199,6 +199,7 @@ const teamsGrid = document.querySelector("#teamsGrid");
 const canvas = document.querySelector("#wheelCanvas");
 const ctx = canvas.getContext("2d");
 const defaultNames = namesArea.value.trim();
+const slotsPerTeam = 2;
 
 const palette = [
   "#d9a93f",
@@ -274,12 +275,24 @@ function makeDistribution() {
   }));
 
   if (modeSelect.value === "balanced") {
+    const teamOrder = shuffle(Array.from({ length: count }, (_, index) => index));
     names.forEach((name, index) => {
-      generated[index % count].members.push(name);
+      if (index >= count * slotsPerTeam) return;
+      const round = Math.floor(index / count);
+      const teamIndex = teamOrder[index % count];
+      generated[teamIndex].members[round] = name;
     });
   } else {
-    names.forEach((name) => {
-      generated[Math.floor(Math.random() * count)].members.push(name);
+    const slots = shuffle(
+      Array.from({ length: count * slotsPerTeam }, (_, index) => ({
+        teamIndex: Math.floor(index / slotsPerTeam),
+        slotIndex: index % slotsPerTeam
+      }))
+    );
+
+    names.slice(0, slots.length).forEach((name, index) => {
+      const slot = slots[index];
+      generated[slot.teamIndex].members[slot.slotIndex] = name;
     });
   }
 
@@ -289,17 +302,11 @@ function makeDistribution() {
 function renderTeams(isShuffling) {
   teamsGrid.innerHTML = "";
 
-  const maxRows = Math.max(
-    2,
-    ...teams.map((team) => team.members.length),
-    Math.ceil(getNames().length / Math.max(1, getTeamCount()))
-  );
-
   teams.forEach((team) => {
     const card = document.createElement("article");
     card.className = `roulette-team-card${isShuffling ? " shuffling" : ""}`;
 
-    const rows = Array.from({ length: maxRows }, (_, index) => {
+    const rows = Array.from({ length: slotsPerTeam }, (_, index) => {
       const player = team.members[index];
       return `<div class="roulette-player-row${isShuffling ? " flip" : ""}${player ? "" : " empty"}">${player || "Libre"}</div>`;
     }).join("");
@@ -320,7 +327,7 @@ function updateStats() {
   const teamCount = getTeamCount();
   playersStat.textContent = String(playerCount);
   teamsStat.textContent = String(teamCount);
-  slotsStat.textContent = String(Math.max(playerCount, teamCount * 2));
+  slotsStat.textContent = String(teamCount * slotsPerTeam);
 }
 
 function previewShuffle() {
@@ -372,12 +379,15 @@ function spinAndShuffle() {
     spinning = false;
     setButtons(true);
     updateStats();
-  });
+  }, modeSelect.value === "random");
 }
 
 function makeSummary(list) {
   return list
-    .map((team) => `${team.name}: ${team.members.length ? team.members.join(", ") : "Libre"}`)
+    .map((team) => {
+      const members = team.members.filter(Boolean);
+      return `${team.name}: ${members.length ? members.join(", ") : "Libre"}`;
+    })
     .join(" | ");
 }
 
@@ -392,12 +402,12 @@ function setButtons(enabled) {
   modeSelect.disabled = !enabled;
 }
 
-function spinWheelAnimation(done) {
+function spinWheelAnimation(done, isRandomMode = false) {
   const start = rotation;
-  const extraTurns = Math.PI * 2 * (6 + Math.floor(Math.random() * 3));
+  const extraTurns = Math.PI * 2 * ((isRandomMode ? 9 : 6) + Math.floor(Math.random() * 3));
   const randomStop = Math.random() * Math.PI * 2;
   const end = start + extraTurns + randomStop;
-  const duration = 4200;
+  const duration = isRandomMode ? 6500 : 4200;
   const startTime = performance.now();
   let nextTickAt = startTime;
 
