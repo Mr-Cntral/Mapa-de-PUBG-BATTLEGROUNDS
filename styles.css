@@ -728,38 +728,6 @@ main {
   filter: drop-shadow(0 20px 26px rgba(0, 0, 0, 0.42));
 }
 
-.pointer {
-  position: absolute;
-  left: 50%;
-  top: -8px;
-  z-index: 3;
-  width: 64px;
-  height: 82px;
-  filter: drop-shadow(0 8px 12px rgba(0, 0, 0, 0.45));
-  transform: translateX(-50%);
-}
-
-.pointer::before {
-  position: absolute;
-  inset: 0;
-  content: "";
-  border-radius: 12px;
-  background: linear-gradient(180deg, #fff0b7, #dfaf3d 65%, #8b621d 100%);
-  clip-path: polygon(50% 100%, 8% 18%, 50% 0, 92% 18%);
-}
-
-.pointer::after {
-  position: absolute;
-  top: 12px;
-  left: 50%;
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
-  content: "";
-  background: radial-gradient(circle at 35% 30%, #fff, #ffe28a, #cb8a1f);
-  transform: translateX(-50%);
-}
-
 .spin-center {
   position: absolute;
   left: 50%;

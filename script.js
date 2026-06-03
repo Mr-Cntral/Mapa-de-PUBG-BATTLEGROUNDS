@@ -214,6 +214,7 @@ let teams = [];
 let rotation = 0;
 let spinning = false;
 let shuffleTimer = null;
+let audioContext = null;
 
 function getNames() {
   return namesArea.value
@@ -342,6 +343,7 @@ function spinAndShuffle() {
   }
 
   spinning = true;
+  ensureAudio();
   setButtons(false);
   shuffleLight.classList.add("show");
   resultTitle.textContent = "Mezclando...";
@@ -397,6 +399,7 @@ function spinWheelAnimation(done) {
   const end = start + extraTurns + randomStop;
   const duration = 4200;
   const startTime = performance.now();
+  let nextTickAt = startTime;
 
   function animate(now) {
     const progress = Math.min(1, (now - startTime) / duration);
@@ -404,16 +407,69 @@ function spinWheelAnimation(done) {
     rotation = start + (end - start) * eased;
     drawWheel();
 
+    if (now >= nextTickAt && progress < 0.98) {
+      playTick(progress);
+      nextTickAt = now + 42 + progress * progress * 210;
+    }
+
     if (progress < 1) {
       window.requestAnimationFrame(animate);
     } else {
       rotation = normalize(end);
       drawWheel();
+      playFinishSound();
       done();
     }
   }
 
   window.requestAnimationFrame(animate);
+}
+
+function ensureAudio() {
+  const AudioCtor = window.AudioContext || window.webkitAudioContext;
+  if (!AudioCtor) return null;
+
+  if (!audioContext) {
+    audioContext = new AudioCtor();
+  }
+
+  if (audioContext.state === "suspended") {
+    audioContext.resume();
+  }
+
+  return audioContext;
+}
+
+function playTone({ frequency, duration, type = "square", volume = 0.04, when = 0 }) {
+  const context = ensureAudio();
+  if (!context) return;
+
+  const start = context.currentTime + when;
+  const oscillator = context.createOscillator();
+  const gain = context.createGain();
+
+  oscillator.type = type;
+  oscillator.frequency.setValueAtTime(frequency, start);
+  gain.gain.setValueAtTime(0.0001, start);
+  gain.gain.exponentialRampToValueAtTime(volume, start + 0.008);
+  gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+
+  oscillator.connect(gain);
+  gain.connect(context.destination);
+  oscillator.start(start);
+  oscillator.stop(start + duration + 0.02);
+}
+
+function playTick(progress) {
+  const frequency = 760 - progress * 220;
+  const duration = 0.028 + progress * 0.018;
+  playTone({ frequency, duration, type: "square", volume: 0.035 });
+}
+
+function playFinishSound() {
+  playTone({ frequency: 440, duration: 0.11, type: "triangle", volume: 0.055 });
+  playTone({ frequency: 660, duration: 0.14, type: "triangle", volume: 0.05, when: 0.1 });
+  playTone({ frequency: 880, duration: 0.18, type: "sine", volume: 0.045, when: 0.22 });
 }
 
 function drawWheel() {
